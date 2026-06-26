@@ -1,31 +1,38 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 
-// Initialize Supabase client
+// Initialize Supabase client with service_role key
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  db: { schema: 'public' }
+});
+
+// JWT configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'hvemkanhvornaar-secret-key-change-in-production';
+const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Middleware to check if user is authenticated (via session)
-const requireAuth = async (req, res, next) => {
+// Middleware to verify JWT token
+const requireAuth = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized: No token provided' });
   }
-  
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) {
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
-  
-  req.user = user;
-  next();
 };
 
 // Middleware to check if user is admin
@@ -44,7 +51,7 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
-    // Fetch user from database
+    // Fetch user from database using service_role
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
@@ -61,17 +68,23 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    // Create a session (for simplicity, return user data and a token)
-    // Note: In production, use Supabase Auth or JWT
+    // Create JWT token
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
     res.json({
       user: {
         id: user.id,
         username: user.username,
         role: user.role
       },
-      token: `user-${user.id}-${Date.now()}` // Simplified token (not secure for production)
+      token
     });
   } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -108,6 +121,7 @@ app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
       }
     });
   } catch (err) {
+    console.error('Create user error:', err);
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
@@ -125,6 +139,7 @@ app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
 
     res.json({ users });
   } catch (err) {
+    console.error('Fetch users error:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -151,6 +166,7 @@ app.post('/api/polls', requireAuth, requireAdmin, async (req, res) => {
 
     res.json({ poll });
   } catch (err) {
+    console.error('Create poll error:', err);
     res.status(500).json({ error: 'Failed to create poll' });
   }
 });
@@ -168,6 +184,7 @@ app.get('/api/polls', async (req, res) => {
 
     res.json({ polls });
   } catch (err) {
+    console.error('Fetch polls error:', err);
     res.status(500).json({ error: 'Failed to fetch polls' });
   }
 });
@@ -200,6 +217,7 @@ app.get('/api/polls/:id', async (req, res) => {
 
     res.json({ poll, votes });
   } catch (err) {
+    console.error('Fetch poll error:', err);
     res.status(500).json({ error: 'Failed to fetch poll' });
   }
 });
@@ -238,6 +256,7 @@ app.post('/api/votes', requireAuth, async (req, res) => {
 
     res.json({ vote });
   } catch (err) {
+    console.error('Submit vote error:', err);
     res.status(500).json({ error: 'Failed to submit vote' });
   }
 });
