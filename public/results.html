@@ -4,24 +4,45 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Resultater - Hvem Kan Hvor Naar</title>
-  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style type="text/tailwindcss">
+    @layer base { html { font-family: 'Inter', system-ui, sans-serif; } }
+    @layer components {
+      .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50; }
+      .btn-secondary { @apply bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:ring-indigo-500; }
+      .card { @apply rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200; }
+      .message { @apply rounded-lg p-3.5 text-sm font-medium mb-6; }
+      .message.error { @apply bg-red-50 text-red-700 ring-1 ring-inset ring-red-200; }
+      .message.success { @apply bg-green-50 text-green-700 ring-1 ring-inset ring-green-200; }
+    }
+  </style>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1 id="pollTitle">Indlæser...</h1>
-      <div class="user-info" id="userInfo"></div>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+      <a href="polls.html" class="flex items-center gap-2 font-semibold">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white text-sm">📅</span>
+        <span class="hidden sm:inline">Hvem Kan Hvor Naar</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-slate-500 hidden sm:inline" id="userInfo"></span>
+        <button class="btn btn-secondary !py-2 !px-3" id="logoutBtn">Log ud</button>
+      </div>
     </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8">
+    <a href="polls.html" class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-4">&larr; Tilbage til afstemninger</a>
+    <h1 id="pollTitle" class="text-2xl font-bold mb-6">Indlæser...</h1>
 
     <div id="message" class="message hidden"></div>
 
-    <div id="resultsContent">
+    <div id="resultsContent" class="text-slate-500">
       <p>Indlæser resultater...</p>
     </div>
-
-    <button class="secondary" id="logoutBtn">Log ud</button>
-    <a href="polls.html" class="secondary" style="margin-left: 10px;">Tilbage til afstemninger</a>
-  </div>
+  </main>
 
   <script>
     const API_BASE = window.location.origin + '/api';
@@ -35,7 +56,7 @@
     }
 
     // Display user info
-    document.getElementById('userInfo').textContent = `Logget ind som: ${user.username}`;
+    document.getElementById('userInfo').textContent = `Logget ind som ${user.username}`;
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -52,6 +73,10 @@
       showMessage('Ingen afstemnings-ID angivet', 'error');
     }
 
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
     // Load poll and results
     async function loadResults() {
       try {
@@ -65,7 +90,8 @@
         document.getElementById('pollTitle').textContent = data.poll.title;
 
         const resultsContent = document.getElementById('resultsContent');
-        
+        resultsContent.classList.remove('text-slate-500');
+
         // Create a map of date to users who can attend
         const dateToUsers = {};
         data.poll.dates.forEach(date => {
@@ -83,56 +109,74 @@
         // Find dates everyone can attend
         const allUsers = [...new Set(data.votes.map(v => v.user_id.username))];
         const commonDates = data.poll.dates.filter(date => {
-          return dateToUsers[date].length === allUsers.length;
+          return allUsers.length > 0 && dateToUsers[date].length === allUsers.length;
         });
 
-        // Build results HTML
+        // Participants summary
         let html = `
-          <h2>Datoer</h2>
-          <p>Deltagere: ${allUsers.join(', ')}</p>
-          
-          <h3>Fælles datoer (alle kan)</h3>
+          <div class="flex flex-wrap items-center gap-2 mb-6">
+            <span class="text-sm text-slate-500">Deltagere:</span>
+            ${allUsers.length ? allUsers.map(u => `<span class="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">${escapeHtml(u)}</span>`).join('') : '<span class="text-sm text-slate-400">Ingen har stemt endnu</span>'}
+          </div>
         `;
 
+        // Common dates highlight
+        html += `<h2 class="text-lg font-semibold mb-3">Fælles datoer (alle kan)</h2>`;
         if (commonDates.length > 0) {
-          html += `<ul class="dates-list">`;
+          html += `<div class="grid gap-3 sm:grid-cols-2 mb-8">`;
           commonDates.forEach(date => {
-            html += `<li class="can-attend">${date} - Alle ${allUsers.length} deltagere kan</li>`;
+            html += `
+              <div class="flex items-center gap-3 rounded-xl bg-green-50 ring-1 ring-green-200 p-4">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-white text-sm">✓</span>
+                <div>
+                  <div class="font-semibold text-green-900">${escapeHtml(date)}</div>
+                  <div class="text-xs text-green-700">Alle ${allUsers.length} deltagere kan</div>
+                </div>
+              </div>
+            `;
           });
-          html += `</ul>`;
+          html += `</div>`;
         } else {
-          html += `<p>Der er ingen datoer, som alle kan.</p>`;
+          html += `<div class="rounded-xl bg-amber-50 ring-1 ring-amber-200 p-4 text-sm text-amber-800 mb-8">Der er ingen datoer, som alle kan.</div>`;
         }
 
+        // Full overview table
         html += `
-          <h3>Alle datoer</h3>
-          <table class="table results-table">
-            <thead>
-              <tr>
-                <th>Dato</th>
-                ${allUsers.map(u => `<th>${u}</th>`).join('')}
-                <th>Antal</th>
-              </tr>
-            </thead>
-            <tbody>
+          <h2 class="text-lg font-semibold mb-3">Alle datoer</h2>
+          <div class="card !p-0 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-600">Dato</th>
+                    ${allUsers.map(u => `<th class="px-4 py-3 text-center font-semibold text-slate-600">${escapeHtml(u)}</th>`).join('')}
+                    <th class="px-4 py-3 text-center font-semibold text-slate-600">Antal</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
         `;
 
         data.poll.dates.forEach(date => {
-          html += `<tr>`;
-          html += `<td>${date}</td>`;
-          
+          const isCommon = commonDates.includes(date);
+          html += `<tr class="${isCommon ? 'bg-green-50/60' : ''}">`;
+          html += `<td class="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">${escapeHtml(date)}</td>`;
+
           allUsers.forEach(u => {
             const canAttend = dateToUsers[date].includes(u);
-            html += `<td class="${canAttend ? 'yes' : 'no'}">${canAttend ? 'Ja' : 'Nej'}</td>`;
+            html += `<td class="px-4 py-3 text-center">
+              <span class="inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold ${canAttend ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}">${canAttend ? '✓' : '–'}</span>
+            </td>`;
           });
-          
-          html += `<td>${dateToUsers[date].length}/${allUsers.length}</td>`;
+
+          html += `<td class="px-4 py-3 text-center font-medium text-slate-600 whitespace-nowrap">${dateToUsers[date].length}/${allUsers.length}</td>`;
           html += `</tr>`;
         });
 
         html += `
-            </tbody>
-          </table>
+                </tbody>
+              </table>
+            </div>
+          </div>
         `;
 
         resultsContent.innerHTML = html;
@@ -147,7 +191,7 @@
       messageEl.textContent = text;
       messageEl.className = `message ${type}`;
       messageEl.classList.remove('hidden');
-      
+
       setTimeout(() => {
         messageEl.classList.add('hidden');
       }, 5000);

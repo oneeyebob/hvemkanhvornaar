@@ -4,22 +4,45 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Afstemninger - Hvem Kan Hvor Naar</title>
-  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style type="text/tailwindcss">
+    @layer base { html { font-family: 'Inter', system-ui, sans-serif; } }
+    @layer components {
+      .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50; }
+      .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-500 focus:ring-indigo-500; }
+      .btn-secondary { @apply bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:ring-indigo-500; }
+      .card { @apply rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200; }
+      .badge { @apply inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-100; }
+      .message { @apply rounded-lg p-3.5 text-sm font-medium mb-6; }
+      .message.error { @apply bg-red-50 text-red-700 ring-1 ring-inset ring-red-200; }
+      .message.success { @apply bg-green-50 text-green-700 ring-1 ring-inset ring-green-200; }
+    }
+  </style>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Afstemninger</h1>
-      <div class="user-info" id="userInfo"></div>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <a href="polls.html" class="flex items-center gap-2 font-semibold">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white text-sm">📅</span>
+        <span class="hidden sm:inline">Hvem Kan Hvor Naar</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-slate-500 hidden sm:inline" id="userInfo"></span>
+        <button class="btn btn-secondary !py-2 !px-3" id="logoutBtn">Log ud</button>
+      </div>
     </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-1">Afstemninger</h1>
+    <p class="text-sm text-slate-500 mb-6">Vælg en afstemning for at stemme eller se resultater.</p>
 
     <div id="message" class="message hidden"></div>
 
-    <h2>Tilgængelige Afstemninger</h2>
-    <div id="pollsList"></div>
-
-    <button class="secondary" id="logoutBtn">Log ud</button>
-  </div>
+    <div id="pollsList" class="grid gap-4 sm:grid-cols-2"></div>
+  </main>
 
   <script>
     const API_BASE = window.location.origin + '/api';
@@ -33,7 +56,7 @@
     }
 
     // Display user info
-    document.getElementById('userInfo').textContent = `Logget ind som: ${user.username}`;
+    document.getElementById('userInfo').textContent = `Logget ind som ${user.username}`;
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -56,22 +79,22 @@
         pollsList.innerHTML = '';
 
         if (data.polls.length === 0) {
-          pollsList.innerHTML = '<p>Der er ingen afstemninger endnu.</p>';
+          pollsList.innerHTML = '<div class="sm:col-span-2 rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center text-slate-500">Der er ingen afstemninger endnu.</div>';
           return;
         }
 
         data.polls.forEach(poll => {
           const pollCard = document.createElement('div');
-          pollCard.className = 'poll-card';
+          pollCard.className = 'card hover:shadow-md transition';
           pollCard.innerHTML = `
-            <h2>${poll.title}</h2>
-            <p>Oprettet: ${new Date(poll.created_at).toLocaleDateString('da-DK')}</p>
-            <div class="dates">
-              ${poll.dates.map(date => `<span>${date}</span>`).join('')}
+            <h2 class="text-lg font-semibold">${poll.title}</h2>
+            <p class="text-sm text-slate-500 mt-1">Oprettet ${new Date(poll.created_at).toLocaleDateString('da-DK')}</p>
+            <div class="flex flex-wrap gap-2 mt-4">
+              ${poll.dates.map(date => `<span class="badge">${date}</span>`).join('')}
             </div>
-            <div class="flex" style="margin-top: 10px;">
-              <a href="poll.html?id=${poll.id}" class="secondary">Stem</a>
-              <a href="results.html?id=${poll.id}" class="secondary">Se Resultater</a>
+            <div class="flex flex-wrap gap-3 mt-5">
+              <a href="poll.html?id=${poll.id}" class="btn btn-primary">Stem</a>
+              <a href="results.html?id=${poll.id}" class="btn btn-secondary">Se resultater</a>
             </div>
           `;
           pollsList.appendChild(pollCard);
@@ -87,7 +110,7 @@
       messageEl.textContent = text;
       messageEl.className = `message ${type}`;
       messageEl.classList.remove('hidden');
-      
+
       setTimeout(() => {
         messageEl.classList.add('hidden');
       }, 5000);

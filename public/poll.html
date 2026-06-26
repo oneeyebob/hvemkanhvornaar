@@ -4,24 +4,46 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Afstemning - Hvem Kan Hvor Naar</title>
-  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style type="text/tailwindcss">
+    @layer base { html { font-family: 'Inter', system-ui, sans-serif; } }
+    @layer components {
+      .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50; }
+      .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-500 focus:ring-indigo-500; }
+      .btn-secondary { @apply bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:ring-indigo-500; }
+      .card { @apply rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200; }
+      .message { @apply rounded-lg p-3.5 text-sm font-medium mb-6; }
+      .message.error { @apply bg-red-50 text-red-700 ring-1 ring-inset ring-red-200; }
+      .message.success { @apply bg-green-50 text-green-700 ring-1 ring-inset ring-green-200; }
+    }
+  </style>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1 id="pollTitle">Indlæser...</h1>
-      <div class="user-info" id="userInfo"></div>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+      <a href="polls.html" class="flex items-center gap-2 font-semibold">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white text-sm">📅</span>
+        <span class="hidden sm:inline">Hvem Kan Hvor Naar</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-slate-500 hidden sm:inline" id="userInfo"></span>
+        <button class="btn btn-secondary !py-2 !px-3" id="logoutBtn">Log ud</button>
+      </div>
     </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <a href="polls.html" class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-4">&larr; Tilbage til afstemninger</a>
+    <h1 id="pollTitle" class="text-2xl font-bold mb-6">Indlæser...</h1>
 
     <div id="message" class="message hidden"></div>
 
-    <div id="pollContent">
+    <div id="pollContent" class="text-slate-500">
       <p>Indlæser afstemning...</p>
     </div>
-
-    <button class="secondary" id="logoutBtn">Log ud</button>
-    <a href="polls.html" class="secondary" style="margin-left: 10px;">Tilbage til afstemninger</a>
-  </div>
+  </main>
 
   <script>
     const API_BASE = window.location.origin + '/api';
@@ -35,7 +57,7 @@
     }
 
     // Display user info
-    document.getElementById('userInfo').textContent = `Logget ind som: ${user.username}`;
+    document.getElementById('userInfo').textContent = `Logget ind som ${user.username}`;
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -63,85 +85,78 @@
           throw new Error(pollData.error || 'Kunne ikke hente afstemning');
         }
 
-        // Check if user has already voted
-        const hasVoted = pollData.votes.some(vote => vote.user_id.id === user.id);
-
         // Display poll
         document.getElementById('pollTitle').textContent = pollData.poll.title;
 
         const pollContent = document.getElementById('pollContent');
-        
-        if (hasVoted) {
-          pollContent.innerHTML = `
-            <p>Du har allerede stemt på denne afstemning.</p>
-            <p>Dine valgte datoer: ${hasVoted.selected_dates.join(', ')}</p>
-            <p><a href="results.html?id=${pollId}" class="secondary">Se resultater</a></p>
-          `;
-        } else {
-          // Show voting form
-          let formHTML = `
-            <form id="voteForm">
-              <p>Vælg de datoer, du kan:</p>
-              <div class="vote-form">
-          `;
 
-          pollData.poll.dates.forEach(date => {
-            formHTML += `
-              <div class="checkbox-group">
-                <input type="checkbox" id="date-${date}" name="dates" value="${date}">
-                <label for="date-${date}">${date}</label>
-              </div>
-            `;
-          });
+        // Show voting form (also pre-filled if the user already voted, so they can change it)
+        const existingVote = pollData.votes.find(vote => vote.user_id.id === user.id);
+        const preselected = existingVote ? existingVote.selected_dates : [];
 
+        let formHTML = `
+          <form id="voteForm" class="card text-slate-900">
+            <p class="text-sm font-medium text-slate-700 mb-4">${existingVote ? 'Du har stemt — du kan ændre dit valg her:' : 'Vælg de datoer, du kan:'}</p>
+            <div class="space-y-2">
+        `;
+
+        pollData.poll.dates.forEach(date => {
+          const checked = preselected.includes(date) ? 'checked' : '';
           formHTML += `
-              </div>
-              <button type="submit">Stem</button>
-            </form>
+            <label for="date-${date}" class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 cursor-pointer hover:bg-slate-50 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50 transition">
+              <input type="checkbox" id="date-${date}" name="dates" value="${date}" ${checked} class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+              <span class="text-sm font-medium">${date}</span>
+            </label>
           `;
+        });
 
-          pollContent.innerHTML = formHTML;
+        formHTML += `
+            </div>
+            <button type="submit" class="btn btn-primary mt-6">${existingVote ? 'Opdater stemme' : 'Stem'}</button>
+          </form>
+        `;
 
-          // Handle form submission
-          document.getElementById('voteForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        pollContent.innerHTML = formHTML;
 
-            const selectedDates = Array.from(document.querySelectorAll('input[name="dates"]:checked'))
-              .map(el => el.value);
+        // Handle form submission
+        document.getElementById('voteForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
 
-            if (selectedDates.length === 0) {
-              showMessage('Venligst vælg mindst en dato', 'error');
-              return;
+          const selectedDates = Array.from(document.querySelectorAll('input[name="dates"]:checked'))
+            .map(el => el.value);
+
+          if (selectedDates.length === 0) {
+            showMessage('Venligst vælg mindst en dato', 'error');
+            return;
+          }
+
+          try {
+            const response = await fetch(`${API_BASE}/votes`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                poll_id: pollId,
+                selected_dates: selectedDates
+              })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.error || 'Kunne ikke afgive stemme');
             }
 
-            try {
-              const response = await fetch(`${API_BASE}/votes`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                  poll_id: pollId,
-                  selected_dates: selectedDates
-                })
-              });
-
-              const data = await response.json();
-
-              if (!response.ok) {
-                throw new Error(data.error || 'Kunne ikke afgive stemme');
-              }
-
-              showMessage('Din stemme er registreret', 'success');
-              setTimeout(() => {
-                window.location.href = `results.html?id=${pollId}`;
-              }, 1500);
-            } catch (err) {
-              showMessage(err.message, 'error');
-            }
-          });
-        }
+            showMessage('Din stemme er registreret', 'success');
+            setTimeout(() => {
+              window.location.href = `results.html?id=${pollId}`;
+            }, 1500);
+          } catch (err) {
+            showMessage(err.message, 'error');
+          }
+        });
       } catch (err) {
         showMessage(err.message, 'error');
       }
@@ -153,7 +168,7 @@
       messageEl.textContent = text;
       messageEl.className = `message ${type}`;
       messageEl.classList.remove('hidden');
-      
+
       setTimeout(() => {
         messageEl.classList.add('hidden');
       }, 5000);

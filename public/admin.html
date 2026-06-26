@@ -4,78 +4,107 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Hvem Kan Hvor Naar</title>
-  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style type="text/tailwindcss">
+    @layer base { html { font-family: 'Inter', system-ui, sans-serif; } }
+    @layer components {
+      .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50; }
+      .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-500 focus:ring-indigo-500; }
+      .btn-secondary { @apply bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:ring-indigo-500; }
+      .card { @apply rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200; }
+      .field-label { @apply block text-sm font-medium text-slate-700 mb-1.5; }
+      .field-input { @apply block w-full rounded-lg border-0 px-3.5 py-2.5 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-sm; }
+      .badge { @apply inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-100; }
+      .message { @apply rounded-lg p-3.5 text-sm font-medium mb-6; }
+      .message.error { @apply bg-red-50 text-red-700 ring-1 ring-inset ring-red-200; }
+      .message.success { @apply bg-green-50 text-green-700 ring-1 ring-inset ring-green-200; }
+    }
+  </style>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Admin Panel</h1>
-      <div class="user-info" id="userInfo"></div>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <a href="admin.html" class="flex items-center gap-2 font-semibold">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white text-sm">📅</span>
+        <span class="hidden sm:inline">Admin Panel</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <a href="polls.html" class="text-sm text-slate-500 hover:text-slate-700 hidden sm:inline">Afstemninger</a>
+        <span class="text-sm text-slate-400 hidden sm:inline" id="userInfo"></span>
+        <button class="btn btn-secondary !py-2 !px-3" id="logoutBtn">Log ud</button>
+      </div>
     </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">Admin Panel</h1>
 
     <div id="message" class="message hidden"></div>
 
-    <div class="flex">
-      <div style="flex: 1; padding: 10px;">
-        <h2>Opret Bruger</h2>
-        <form id="createUserForm">
-          <div class="form-group">
-            <label for="newUsername">Brugernavn</label>
-            <input type="text" id="newUsername" required>
+    <div class="grid gap-6 lg:grid-cols-2">
+      <div class="card">
+        <h2 class="text-lg font-semibold mb-4">Opret bruger</h2>
+        <form id="createUserForm" class="space-y-4">
+          <div>
+            <label class="field-label" for="newUsername">Brugernavn</label>
+            <input class="field-input" type="text" id="newUsername" required>
           </div>
-          
-          <div class="form-group">
-            <label for="newPassword">Kodeord</label>
-            <input type="password" id="newPassword" required>
+          <div>
+            <label class="field-label" for="newPassword">Kodeord</label>
+            <input class="field-input" type="password" id="newPassword" required>
           </div>
-          
-          <div class="form-group">
-            <label for="newRole">Rolle</label>
-            <select id="newRole">
+          <div>
+            <label class="field-label" for="newRole">Rolle</label>
+            <select class="field-input" id="newRole">
               <option value="user">Bruger</option>
               <option value="admin">Admin</option>
             </select>
           </div>
-          
-          <button type="submit">Opret Bruger</button>
+          <button type="submit" class="btn btn-primary">Opret bruger</button>
         </form>
       </div>
 
-      <div style="flex: 1; padding: 10px;">
-        <h2>Opret Afstemning</h2>
-        <form id="createPollForm">
-          <div class="form-group">
-            <label for="pollTitle">Titel</label>
-            <input type="text" id="pollTitle" required>
+      <div class="card">
+        <h2 class="text-lg font-semibold mb-4">Opret afstemning</h2>
+        <form id="createPollForm" class="space-y-4">
+          <div>
+            <label class="field-label" for="pollTitle">Titel</label>
+            <input class="field-input" type="text" id="pollTitle" required>
           </div>
-          
-          <div class="form-group">
-            <label for="pollDates">Datoer (en pr. linje, f.eks. 2024-10-10)</label>
-            <textarea id="pollDates" rows="5" required></textarea>
+          <div>
+            <label class="field-label" for="pollDates">Datoer (en pr. linje, f.eks. 2024-10-10)</label>
+            <textarea class="field-input" id="pollDates" rows="5" required></textarea>
           </div>
-          
-          <button type="submit">Opret Afstemning</button>
+          <button type="submit" class="btn btn-primary">Opret afstemning</button>
         </form>
       </div>
     </div>
 
-    <h2>Eksisterende Brugere</h2>
-    <table class="table" id="usersTable">
-      <thead>
-        <tr>
-          <th>Brugernavn</th>
-          <th>Rolle</th>
-          <th>Oprettet</th>
-        </tr>
-      </thead>
-      <tbody id="usersList"></tbody>
-    </table>
+    <section class="mt-10">
+      <h2 class="text-lg font-semibold mb-4">Eksisterende brugere</h2>
+      <div class="card !p-0 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600">Brugernavn</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600">Rolle</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600">Oprettet</th>
+              </tr>
+            </thead>
+            <tbody id="usersList" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
-    <h2>Eksisterende Afstemninger</h2>
-    <div id="pollsList"></div>
-
-    <button class="danger" id="logoutBtn">Log ud</button>
-  </div>
+    <section class="mt-10">
+      <h2 class="text-lg font-semibold mb-4">Eksisterende afstemninger</h2>
+      <div id="pollsList" class="grid gap-4 sm:grid-cols-2"></div>
+    </section>
+  </main>
 
   <script>
     const API_BASE = window.location.origin + '/api';
@@ -94,7 +123,7 @@
     }
 
     // Display user info
-    document.getElementById('userInfo').textContent = `Logget ind som: ${user.username} (${user.role})`;
+    document.getElementById('userInfo').textContent = `${user.username} (${user.role})`;
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -102,6 +131,10 @@
       localStorage.removeItem('token');
       window.location.href = 'login.html';
     });
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
 
     // Load users
     async function loadUsers() {
@@ -123,10 +156,13 @@
 
         data.users.forEach(u => {
           const row = document.createElement('tr');
+          const roleBadge = u.role === 'admin'
+            ? '<span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">admin</span>'
+            : '<span class="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">bruger</span>';
           row.innerHTML = `
-            <td>${u.username}</td>
-            <td>${u.role}</td>
-            <td>${new Date(u.created_at).toLocaleDateString('da-DK')}</td>
+            <td class="px-4 py-3 font-medium text-slate-900">${escapeHtml(u.username)}</td>
+            <td class="px-4 py-3">${roleBadge}</td>
+            <td class="px-4 py-3 text-slate-500">${new Date(u.created_at).toLocaleDateString('da-DK')}</td>
           `;
           usersList.appendChild(row);
         });
@@ -148,18 +184,23 @@
         const pollsList = document.getElementById('pollsList');
         pollsList.innerHTML = '';
 
+        if (data.polls.length === 0) {
+          pollsList.innerHTML = '<div class="sm:col-span-2 rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center text-slate-500">Ingen afstemninger endnu.</div>';
+          return;
+        }
+
         data.polls.forEach(poll => {
           const pollCard = document.createElement('div');
-          pollCard.className = 'poll-card';
+          pollCard.className = 'card hover:shadow-md transition';
           pollCard.innerHTML = `
-            <h2>${poll.title}</h2>
-            <p>Oprettet: ${new Date(poll.created_at).toLocaleDateString('da-DK')} af ${poll.created_by.username}</p>
-            <div class="dates">
-              ${poll.dates.map(date => `<span>${date}</span>`).join('')}
+            <h3 class="text-lg font-semibold">${escapeHtml(poll.title)}</h3>
+            <p class="text-sm text-slate-500 mt-1">Oprettet ${new Date(poll.created_at).toLocaleDateString('da-DK')} af ${escapeHtml(poll.created_by.username)}</p>
+            <div class="flex flex-wrap gap-2 mt-4">
+              ${poll.dates.map(date => `<span class="badge">${escapeHtml(date)}</span>`).join('')}
             </div>
-            <div class="flex" style="margin-top: 10px;">
-              <a href="poll.html?id=${poll.id}" class="secondary">Se Afstemning</a>
-              <a href="results.html?id=${poll.id}" class="secondary">Se Resultater</a>
+            <div class="flex flex-wrap gap-3 mt-5">
+              <a href="poll.html?id=${poll.id}" class="btn btn-secondary">Se afstemning</a>
+              <a href="results.html?id=${poll.id}" class="btn btn-secondary">Se resultater</a>
             </div>
           `;
           pollsList.appendChild(pollCard);
@@ -244,7 +285,7 @@
       messageEl.textContent = text;
       messageEl.className = `message ${type}`;
       messageEl.classList.remove('hidden');
-      
+
       setTimeout(() => {
         messageEl.classList.add('hidden');
       }, 5000);
