@@ -20,13 +20,16 @@ En simpel Doodle-kopi til at finde fælles datoer, som alle deltagere kan bakke 
 ### 1. Opret Supabase-projekt
 1. Gå til [Supabase Dashboard](https://supabase.com/dashboard) og opret et nyt projekt.
 2. Gå til **SQL Editor** og kør SQL-schemaet fra `supabase/schema.sql`.
-3. Notér din **Project URL** og **anon key** (findes under Project Settings > API).
+3. Notér din **Project URL** og **service_role key** (findes under Project Settings > API).
+
+> **Vigtigt:** Backenden bruger `service_role`-nøglen, da den skal kunne læse/skrive på tværs af RLS-politikkerne. Brug **ikke** `anon`-nøglen — så blokerer RLS adgangen til `users`-tabellen, og login fejler med "Invalid username or password". `service_role`-nøglen er hemmelig og må kun ligge i backend-miljøvariable, aldrig i frontend.
 
 ### 2. Opret miljøvariable
 Opret en `.env`-fil i rodmappen med følgende indhold:
 ```env
 SUPABASE_URL=din-supabase-url
-SUPABASE_KEY=din-supabase-anon-key
+SUPABASE_KEY=din-supabase-service-role-key
+JWT_SECRET=en-lang-tilfaeldig-hemmelig-streng
 ```
 
 ### 3. Opret admin-bruger
@@ -46,7 +49,7 @@ console.log(hash);
 ### 4. Deploy til Vercel
 1. Push koden til et GitHub-repository.
 2. Gå til [Vercel](https://vercel.com/) og importer repositoryet.
-3. Tilføj miljøvariablene (`SUPABASE_URL` og `SUPABASE_KEY`) i Vercel-projektet.
+3. Tilføj miljøvariablene (`SUPABASE_URL`, `SUPABASE_KEY` med **service_role**-nøglen, og `JWT_SECRET`) i Vercel-projektet.
 4. Deploy.
 
 ## Projektstruktur
