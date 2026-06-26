@@ -241,12 +241,13 @@ app.post('/api/votes', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Poll not found' });
     }
 
-    // Submit vote
+    // Submit vote (upsert so a user can change an existing vote)
     const { data: vote, error: voteError } = await supabase
       .from('votes')
-      .insert([
-        { poll_id, user_id: req.user.id, selected_dates }
-      ])
+      .upsert(
+        { poll_id, user_id: req.user.id, selected_dates },
+        { onConflict: 'poll_id,user_id' }
+      )
       .select()
       .single();
 
