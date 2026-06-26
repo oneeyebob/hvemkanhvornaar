@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Afstemninger - Hvem Kan Hvor Naar</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Afstemninger</h1>
+      <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <div id="message" class="message hidden"></div>
+
+    <h2>Tilgængelige Afstemninger</h2>
+    <div id="pollsList"></div>
+
+    <button class="secondary" id="logoutBtn">Log ud</button>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin + '/api';
+
+    // Check if user is logged in
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+
+    if (!user || !token) {
+      window.location.href = 'login.html';
+    }
+
+    // Display user info
+    document.getElementById('userInfo').textContent = `Logget ind som: ${user.username}`;
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
+    });
+
+    // Load polls
+    async function loadPolls() {
+      try {
+        const response = await fetch(`${API_BASE}/polls`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Kunne ikke hente afstemninger');
+        }
+
+        const pollsList = document.getElementById('pollsList');
+        pollsList.innerHTML = '';
+
+        if (data.polls.length === 0) {
+          pollsList.innerHTML = '<p>Der er ingen afstemninger endnu.</p>';
+          return;
+        }
+
+        data.polls.forEach(poll => {
+          const pollCard = document.createElement('div');
+          pollCard.className = 'poll-card';
+          pollCard.innerHTML = `
+            <h2>${poll.title}</h2>
+            <p>Oprettet: ${new Date(poll.created_at).toLocaleDateString('da-DK')}</p>
+            <div class="dates">
+              ${poll.dates.map(date => `<span>${date}</span>`).join('')}
+            </div>
+            <div class="flex" style="margin-top: 10px;">
+              <a href="poll.html?id=${poll.id}" class="secondary">Stem</a>
+              <a href="results.html?id=${poll.id}" class="secondary">Se Resultater</a>
+            </div>
+          `;
+          pollsList.appendChild(pollCard);
+        });
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+    }
+
+    // Helper function to show messages
+    function showMessage(text, type) {
+      const messageEl = document.getElementById('message');
+      messageEl.textContent = text;
+      messageEl.className = `message ${type}`;
+      messageEl.classList.remove('hidden');
+      
+      setTimeout(() => {
+        messageEl.classList.add('hidden');
+      }, 5000);
+    }
+
+    // Initial load
+    loadPolls();
+  </script>
+</body>
+</html>

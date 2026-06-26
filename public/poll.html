@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Afstemning - Hvem Kan Hvor Naar</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 id="pollTitle">Indlæser...</h1>
+      <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <div id="message" class="message hidden"></div>
+
+    <div id="pollContent">
+      <p>Indlæser afstemning...</p>
+    </div>
+
+    <button class="secondary" id="logoutBtn">Log ud</button>
+    <a href="polls.html" class="secondary" style="margin-left: 10px;">Tilbage til afstemninger</a>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin + '/api';
+
+    // Check if user is logged in
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+
+    if (!user || !token) {
+      window.location.href = 'login.html';
+    }
+
+    // Display user info
+    document.getElementById('userInfo').textContent = `Logget ind som: ${user.username}`;
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
+    });
+
+    // Get poll ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const pollId = urlParams.get('id');
+
+    if (!pollId) {
+      showMessage('Ingen afstemnings-ID angivet', 'error');
+    }
+
+    // Load poll and check if user has already voted
+    async function loadPoll() {
+      try {
+        // Fetch poll
+        const pollResponse = await fetch(`${API_BASE}/polls/${pollId}`);
+        const pollData = await pollResponse.json();
+
+        if (!pollResponse.ok) {
+          throw new Error(pollData.error || 'Kunne ikke hente afstemning');
+        }
+
+        // Check if user has already voted
+        const hasVoted = pollData.votes.some(vote => vote.user_id.id === user.id);
+
+        // Display poll
+        document.getElementById('pollTitle').textContent = pollData.poll.title;
+
+        const pollContent = document.getElementById('pollContent');
+        
+        if (hasVoted) {
+          pollContent.innerHTML = `
+            <p>Du har allerede stemt på denne afstemning.</p>
+            <p>Dine valgte datoer: ${hasVoted.selected_dates.join(', ')}</p>
+            <p><a href="results.html?id=${pollId}" class="secondary">Se resultater</a></p>
+          `;
+        } else {
+          // Show voting form
+          let formHTML = `
+            <form id="voteForm">
+              <p>Vælg de datoer, du kan:</p>
+              <div class="vote-form">
+          `;
+
+          pollData.poll.dates.forEach(date => {
+            formHTML += `
+              <div class="checkbox-group">
+                <input type="checkbox" id="date-${date}" name="dates" value="${date}">
+                <label for="date-${date}">${date}</label>
+              </div>
+            `;
+          });
+
+          formHTML += `
+              </div>
+              <button type="submit">Stem</button>
+            </form>
+          `;
+
+          pollContent.innerHTML = formHTML;
+
+          // Handle form submission
+          document.getElementById('voteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const selectedDates = Array.from(document.querySelectorAll('input[name="dates"]:checked'))
+              .map(el => el.value);
+
+            if (selectedDates.length === 0) {
+              showMessage('Venligst vælg mindst en dato', 'error');
+              return;
+            }
+
+            try {
+              const response = await fetch(`${API_BASE}/votes`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  poll_id: pollId,
+                  selected_dates: selectedDates
+                })
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.error || 'Kunne ikke afgive stemme');
+              }
+
+              showMessage('Din stemme er registreret', 'success');
+              setTimeout(() => {
+                window.location.href = `results.html?id=${pollId}`;
+              }, 1500);
+            } catch (err) {
+              showMessage(err.message, 'error');
+            }
+          });
+        }
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+    }
+
+    // Helper function to show messages
+    function showMessage(text, type) {
+      const messageEl = document.getElementById('message');
+      messageEl.textContent = text;
+      messageEl.className = `message ${type}`;
+      messageEl.classList.remove('hidden');
+      
+      setTimeout(() => {
+        messageEl.classList.add('hidden');
+      }, 5000);
+    }
+
+    // Initial load
+    loadPoll();
+  </script>
+</body>
+</html>

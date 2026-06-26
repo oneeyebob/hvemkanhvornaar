@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resultater - Hvem Kan Hvor Naar</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 id="pollTitle">Indlæser...</h1>
+      <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <div id="message" class="message hidden"></div>
+
+    <div id="resultsContent">
+      <p>Indlæser resultater...</p>
+    </div>
+
+    <button class="secondary" id="logoutBtn">Log ud</button>
+    <a href="polls.html" class="secondary" style="margin-left: 10px;">Tilbage til afstemninger</a>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin + '/api';
+
+    // Check if user is logged in
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+
+    if (!user || !token) {
+      window.location.href = 'login.html';
+    }
+
+    // Display user info
+    document.getElementById('userInfo').textContent = `Logget ind som: ${user.username}`;
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
+    });
+
+    // Get poll ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const pollId = urlParams.get('id');
+
+    if (!pollId) {
+      showMessage('Ingen afstemnings-ID angivet', 'error');
+    }
+
+    // Load poll and results
+    async function loadResults() {
+      try {
+        const response = await fetch(`${API_BASE}/polls/${pollId}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Kunne ikke hente resultater');
+        }
+
+        document.getElementById('pollTitle').textContent = data.poll.title;
+
+        const resultsContent = document.getElementById('resultsContent');
+        
+        // Create a map of date to users who can attend
+        const dateToUsers = {};
+        data.poll.dates.forEach(date => {
+          dateToUsers[date] = [];
+        });
+
+        data.votes.forEach(vote => {
+          vote.selected_dates.forEach(date => {
+            if (dateToUsers[date]) {
+              dateToUsers[date].push(vote.user_id.username);
+            }
+          });
+        });
+
+        // Find dates everyone can attend
+        const allUsers = [...new Set(data.votes.map(v => v.user_id.username))];
+        const commonDates = data.poll.dates.filter(date => {
+          return dateToUsers[date].length === allUsers.length;
+        });
+
+        // Build results HTML
+        let html = `
+          <h2>Datoer</h2>
+          <p>Deltagere: ${allUsers.join(', ')}</p>
+          
+          <h3>Fælles datoer (alle kan)</h3>
+        `;
+
+        if (commonDates.length > 0) {
+          html += `<ul class="dates-list">`;
+          commonDates.forEach(date => {
+            html += `<li class="can-attend">${date} - Alle ${allUsers.length} deltagere kan</li>`;
+          });
+          html += `</ul>`;
+        } else {
+          html += `<p>Der er ingen datoer, som alle kan.</p>`;
+        }
+
+        html += `
+          <h3>Alle datoer</h3>
+          <table class="table results-table">
+            <thead>
+              <tr>
+                <th>Dato</th>
+                ${allUsers.map(u => `<th>${u}</th>`).join('')}
+                <th>Antal</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        data.poll.dates.forEach(date => {
+          html += `<tr>`;
+          html += `<td>${date}</td>`;
+          
+          allUsers.forEach(u => {
+            const canAttend = dateToUsers[date].includes(u);
+            html += `<td class="${canAttend ? 'yes' : 'no'}">${canAttend ? 'Ja' : 'Nej'}</td>`;
+          });
+          
+          html += `<td>${dateToUsers[date].length}/${allUsers.length}</td>`;
+          html += `</tr>`;
+        });
+
+        html += `
+            </tbody>
+          </table>
+        `;
+
+        resultsContent.innerHTML = html;
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+    }
+
+    // Helper function to show messages
+    function showMessage(text, type) {
+      const messageEl = document.getElementById('message');
+      messageEl.textContent = text;
+      messageEl.className = `message ${type}`;
+      messageEl.classList.remove('hidden');
+      
+      setTimeout(() => {
+        messageEl.classList.add('hidden');
+      }, 5000);
+    }
+
+    // Initial load
+    loadResults();
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "hvemkanhvornaar",
+  "version": "1.0.0",
+  "description": "Simpel Doodle-kopi til at finde fælles datoer",
+  "main": "api/index.js",
+  "scripts": {
+    "dev": "nodemon api/index.js",
+    "start": "node api/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

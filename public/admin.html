@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Hvem Kan Hvor Naar</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Admin Panel</h1>
+      <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <div id="message" class="message hidden"></div>
+
+    <div class="flex">
+      <div style="flex: 1; padding: 10px;">
+        <h2>Opret Bruger</h2>
+        <form id="createUserForm">
+          <div class="form-group">
+            <label for="newUsername">Brugernavn</label>
+            <input type="text" id="newUsername" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="newPassword">Kodeord</label>
+            <input type="password" id="newPassword" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="newRole">Rolle</label>
+            <select id="newRole">
+              <option value="user">Bruger</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          
+          <button type="submit">Opret Bruger</button>
+        </form>
+      </div>
+
+      <div style="flex: 1; padding: 10px;">
+        <h2>Opret Afstemning</h2>
+        <form id="createPollForm">
+          <div class="form-group">
+            <label for="pollTitle">Titel</label>
+            <input type="text" id="pollTitle" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="pollDates">Datoer (en pr. linje, f.eks. 2024-10-10)</label>
+            <textarea id="pollDates" rows="5" required></textarea>
+          </div>
+          
+          <button type="submit">Opret Afstemning</button>
+        </form>
+      </div>
+    </div>
+
+    <h2>Eksisterende Brugere</h2>
+    <table class="table" id="usersTable">
+      <thead>
+        <tr>
+          <th>Brugernavn</th>
+          <th>Rolle</th>
+          <th>Oprettet</th>
+        </tr>
+      </thead>
+      <tbody id="usersList"></tbody>
+    </table>
+
+    <h2>Eksisterende Afstemninger</h2>
+    <div id="pollsList"></div>
+
+    <button class="danger" id="logoutBtn">Log ud</button>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin + '/api';
+
+    // Check if user is logged in and is admin
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+
+    if (!user || !token) {
+      window.location.href = 'login.html';
+    }
+
+    if (user.role !== 'admin') {
+      alert('Du har ikke adgang til denne side');
+      window.location.href = 'polls.html';
+    }
+
+    // Display user info
+    document.getElementById('userInfo').textContent = `Logget ind som: ${user.username} (${user.role})`;
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
+    });
+
+    // Load users
+    async function loadUsers() {
+      try {
+        const response = await fetch(`${API_BASE}/users`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Kunne ikke hente brugere');
+        }
+
+        const usersList = document.getElementById('usersList');
+        usersList.innerHTML = '';
+
+        data.users.forEach(u => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${u.username}</td>
+            <td>${u.role}</td>
+            <td>${new Date(u.created_at).toLocaleDateString('da-DK')}</td>
+          `;
+          usersList.appendChild(row);
+        });
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+    }
+
+    // Load polls
+    async function loadPolls() {
+      try {
+        const response = await fetch(`${API_BASE}/polls`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Kunne ikke hente afstemninger');
+        }
+
+        const pollsList = document.getElementById('pollsList');
+        pollsList.innerHTML = '';
+
+        data.polls.forEach(poll => {
+          const pollCard = document.createElement('div');
+          pollCard.className = 'poll-card';
+          pollCard.innerHTML = `
+            <h2>${poll.title}</h2>
+            <p>Oprettet: ${new Date(poll.created_at).toLocaleDateString('da-DK')} af ${poll.created_by.username}</p>
+            <div class="dates">
+              ${poll.dates.map(date => `<span>${date}</span>`).join('')}
+            </div>
+            <div class="flex" style="margin-top: 10px;">
+              <a href="poll.html?id=${poll.id}" class="secondary">Se Afstemning</a>
+              <a href="results.html?id=${poll.id}" class="secondary">Se Resultater</a>
+            </div>
+          `;
+          pollsList.appendChild(pollCard);
+        });
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+    }
+
+    // Create user
+    document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('newUsername').value;
+      const password = document.getElementById('newPassword').value;
+      const role = document.getElementById('newRole').value;
+
+      try {
+        const response = await fetch(`${API_BASE}/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ username, password, role })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Kunne ikke oprette bruger');
+        }
+
+        showMessage('Bruger oprettet succesfuldt', 'success');
+        document.getElementById('createUserForm').reset();
+        loadUsers();
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+    });
+
+    // Create poll
+    document.getElementById('createPollForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const title = document.getElementById('pollTitle').value;
+      const datesText = document.getElementById('pollDates').value;
+      const dates = datesText.split('\n').map(d => d.trim()).filter(d => d);
+
+      if (dates.length === 0) {
+        showMessage('Venligst indtast mindst en dato', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/polls`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ title, dates })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Kunne ikke oprette afstemning');
+        }
+
+        showMessage('Afstemning oprettet succesfuldt', 'success');
+        document.getElementById('createPollForm').reset();
+        loadPolls();
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+    });
+
+    // Helper function to show messages
+    function showMessage(text, type) {
+      const messageEl = document.getElementById('message');
+      messageEl.textContent = text;
+      messageEl.className = `message ${type}`;
+      messageEl.classList.remove('hidden');
+      
+      setTimeout(() => {
+        messageEl.classList.add('hidden');
+      }, 5000);
+    }
+
+    // Initial load
+    loadUsers();
+    loadPolls();
+  </script>
+</body>
+</html>
