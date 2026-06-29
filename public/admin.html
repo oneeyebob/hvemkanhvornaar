@@ -192,8 +192,17 @@
         data.polls.forEach(poll => {
           const pollCard = document.createElement('div');
           pollCard.className = 'card hover:shadow-md transition';
+          pollCard.dataset.pollId = poll.id;
           pollCard.innerHTML = `
-            <h3 class="text-lg font-semibold">${escapeHtml(poll.title)}</h3>
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="title-display text-lg font-semibold">${escapeHtml(poll.title)}</h3>
+              <button class="edit-btn btn btn-secondary !py-1 !px-2 text-xs shrink-0">Rediger</button>
+            </div>
+            <form class="edit-form hidden mt-2 flex gap-2 items-center">
+              <input type="text" class="field-input !py-1.5 text-base font-semibold" value="${escapeHtml(poll.title)}">
+              <button type="submit" class="btn btn-primary !py-1.5 !px-3 shrink-0">Gem</button>
+              <button type="button" class="cancel-btn btn btn-secondary !py-1.5 !px-3 shrink-0">Annuller</button>
+            </form>
             <p class="text-sm text-slate-500 mt-1">Oprettet ${new Date(poll.created_at).toLocaleDateString('da-DK')} af ${escapeHtml(poll.created_by.username)}</p>
             <div class="flex flex-wrap gap-2 mt-4">
               ${poll.dates.map(date => `<span class="badge">${escapeHtml(date)}</span>`).join('')}
@@ -203,6 +212,55 @@
               <a href="results.html?id=${poll.id}" class="btn btn-secondary">Se resultater</a>
             </div>
           `;
+
+          const editBtn = pollCard.querySelector('.edit-btn');
+          const editForm = pollCard.querySelector('.edit-form');
+          const titleDisplay = pollCard.querySelector('.title-display');
+          const cancelBtn = pollCard.querySelector('.cancel-btn');
+          const titleInput = pollCard.querySelector('input');
+
+          editBtn.addEventListener('click', () => {
+            titleDisplay.classList.add('hidden');
+            editBtn.classList.add('hidden');
+            editForm.classList.remove('hidden');
+            titleInput.focus();
+          });
+
+          cancelBtn.addEventListener('click', () => {
+            editForm.classList.add('hidden');
+            titleDisplay.classList.remove('hidden');
+            editBtn.classList.remove('hidden');
+            titleInput.value = titleDisplay.textContent;
+          });
+
+          editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newTitle = titleInput.value.trim();
+            if (!newTitle) return;
+
+            try {
+              const response = await fetch(`${API_BASE}/polls/${poll.id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ title: newTitle })
+              });
+
+              const data = await response.json();
+              if (!response.ok) throw new Error(data.error || 'Kunne ikke opdatere titel');
+
+              titleDisplay.textContent = newTitle;
+              editForm.classList.add('hidden');
+              titleDisplay.classList.remove('hidden');
+              editBtn.classList.remove('hidden');
+              showMessage('Titel opdateret', 'success');
+            } catch (err) {
+              showMessage(err.message, 'error');
+            }
+          });
+
           pollsList.appendChild(pollCard);
         });
       } catch (err) {

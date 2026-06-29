@@ -171,6 +171,36 @@ app.post('/api/polls', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// PATCH /api/polls/:id - Update poll title (admin-only)
+app.patch('/api/polls/:id', requireAuth, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
+  if (!title || !title.trim()) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+
+  try {
+    const { data: poll, error } = await supabase
+      .from('polls')
+      .update({ title: title.trim() })
+      .eq('id', id)
+      .select('id, title')
+      .single();
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (!poll) {
+      return res.status(404).json({ error: 'Poll not found' });
+    }
+
+    res.json({ poll });
+  } catch (err) {
+    console.error('Update poll error:', err);
+    res.status(500).json({ error: 'Failed to update poll' });
+  }
+});
+
 // GET /api/polls - List all polls
 app.get('/api/polls', async (req, res) => {
   try {
